@@ -16,7 +16,7 @@ import (
 
 	"github.com/luxfi/log"
 
-	"github.com/hanzoai/amqp/pkg/amqp"
+	"github.com/hanzoai/amqp"
 	"github.com/hanzoai/cloud/pkg/cloud"
 	"github.com/hanzoai/zip"
 	"github.com/hanzoai/zip/middleware"
