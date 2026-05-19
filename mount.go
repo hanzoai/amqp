@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/hanzoai/amqp/proxy"
-	"github.com/hanzoai/cloud/pkg/cloud"
+	"github.com/hanzoai/cloud"
 	"github.com/hanzoai/zip"
 )
 

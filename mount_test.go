@@ -9,7 +9,7 @@ import (
 	luxlog "github.com/luxfi/log"
 
 	"github.com/hanzoai/amqp"
-	"github.com/hanzoai/cloud/pkg/cloud"
+	"github.com/hanzoai/cloud"
 	"github.com/hanzoai/zip"
 )
 
