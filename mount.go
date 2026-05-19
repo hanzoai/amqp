@@ -4,7 +4,7 @@
 //
 // Wire shape:
 //
-//	import _ "github.com/hanzoai/amqp/pkg/amqp"  // init() registers
+//	import _ "github.com/hanzoai/amqp"  // init() registers
 //
 // AMQP is broker-only — there is no HTTP surface today. The Mount()
 // exposes /v1/amqp/health and /v1/amqp/readyz on the parent zip.App
