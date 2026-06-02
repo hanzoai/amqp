@@ -3,10 +3,17 @@ module github.com/hanzoai/amqp
 go 1.26.3
 
 require (
-	github.com/hanzoai/cloud v0.1.0
-	github.com/hanzoai/zip v0.2.0
+	github.com/hanzoai/cloud v0.0.0
+	github.com/hanzoai/zip v0.0.0
 	github.com/luxfi/log v1.4.3
 	github.com/nats-io/nats.go v1.50.0
+)
+
+// HIP-0106 cloud Mount() — point at sibling cloud + zip checkouts.
+// CI overrides via GOPROXY once cloud is published.
+replace (
+	github.com/hanzoai/cloud => ../cloud
+	github.com/hanzoai/zip => ../zip
 )
 
 require (
