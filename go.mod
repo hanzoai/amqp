@@ -1,6 +1,6 @@
 module github.com/hanzoai/amqp
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/hanzoai/cloud v0.0.0
