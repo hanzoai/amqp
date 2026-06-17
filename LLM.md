@@ -1,4 +1,4 @@
-# amqp — AI Assistant Context
+# amqp
 
 # Hanzo AMQP
 
