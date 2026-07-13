@@ -2,24 +2,24 @@
 
 # Hanzo AMQP
 
-RabbitMQ wire protocol (AMQP 0-9-1) adapter for Hanzo PubSub (NATS JetStream). Accepts standard AMQP clients and translates requests to NATS underneath. Built for the Jube AML/fraud sidecar, which requires RabbitMQ but runs inside Hanzo infrastructure backed by NATS.
+RabbitMQ wire protocol (AMQP 0-9-1) adapter for Hanzo PubSub (NATS JetStream). Accepts standard AMQP clients and translates requests to NATS underneath. Built for the AML AML/fraud sidecar, which requires RabbitMQ but runs inside Hanzo infrastructure backed by NATS.
 
 ## Architecture
 
 ```
-Jube (C#) --AMQP 0-9-1--> hanzo-amqp --JetStream--> NATS
+AML (C#) --AMQP 0-9-1--> hanzo-amqp --JetStream--> NATS
 ```
 
-Jube connects to this proxy on port 5672 thinking it is RabbitMQ. The proxy translates AMQP publish/consume operations to NATS JetStream subjects.
+AML connects to this proxy on port 5672 thinking it is RabbitMQ. The proxy translates AMQP publish/consume operations to NATS JetStream subjects.
 
 ## Channel Mappings
 
 | AMQP Name          | Type   | NATS Subject         | NATS Stream          |
 |---------------------|--------|----------------------|----------------------|
-| jubeInbound        | queue  | jube.inbound         | jube-inbound         |
-| jubeOutbound       | fanout | jube.outbound        | jube-outbound        |
-| jubeActivations    | fanout | jube.activations     | jube-activations     |
-| jubeNotifications  | queue  | jube.notifications   | jube-notifications   |
+| amlInbound        | queue  | aml.inbound         | aml-inbound         |
+| amlOutbound       | fanout | aml.outbound        | aml-outbound        |
+| amlActivations    | fanout | aml.activations     | aml-activations     |
+| amlNotifications  | queue  | aml.notifications   | aml-notifications   |
 
 ## Quick Start
 
@@ -29,12 +29,12 @@ go run . --pubsub-url nats://localhost:4222 --amqp-addr 0.0.0.0:5672
 
 ## Kubernetes
 
-In Hanzo infrastructure, this runs as a sidecar alongside Jube:
+In Hanzo infrastructure, this runs as a sidecar alongside AML:
 
 ```yaml
 containers:
-  - name: jube
-    image: ghcr.io/hanzoai/jube:latest
+  - name: aml
+    image: ghcr.io/hanzoai/aml:latest
     env:
       - name: AMQP_URL
         value: "amqp://localhost:5672"

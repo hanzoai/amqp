@@ -8,32 +8,32 @@ type ChannelMapping struct {
 	NATSStream   string // NATS JetStream stream name
 }
 
-// DefaultMappings returns the 4 Jube AMQP channel mappings.
+// DefaultMappings returns the 4 AML AMQP channel mappings.
 func DefaultMappings() []ChannelMapping {
 	return []ChannelMapping{
 		{
-			AMQPName:    "jubeInbound",
+			AMQPName:    "amlInbound",
 			AMQPType:    "queue",
-			NATSSubject: "jube.inbound",
-			NATSStream:  "jube-inbound",
+			NATSSubject: "aml.inbound",
+			NATSStream:  "aml-inbound",
 		},
 		{
-			AMQPName:    "jubeOutbound",
+			AMQPName:    "amlOutbound",
 			AMQPType:    "fanout",
-			NATSSubject: "jube.outbound",
-			NATSStream:  "jube-outbound",
+			NATSSubject: "aml.outbound",
+			NATSStream:  "aml-outbound",
 		},
 		{
-			AMQPName:    "jubeActivations",
+			AMQPName:    "amlActivations",
 			AMQPType:    "fanout",
-			NATSSubject: "jube.activations",
-			NATSStream:  "jube-activations",
+			NATSSubject: "aml.activations",
+			NATSStream:  "aml-activations",
 		},
 		{
-			AMQPName:    "jubeNotifications",
+			AMQPName:    "amlNotifications",
 			AMQPType:    "queue",
-			NATSSubject: "jube.notifications",
-			NATSStream:  "jube-notifications",
+			NATSSubject: "aml.notifications",
+			NATSStream:  "aml-notifications",
 		},
 	}
 }

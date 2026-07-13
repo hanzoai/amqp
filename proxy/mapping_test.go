@@ -9,10 +9,10 @@ func TestDefaultMappings(t *testing.T) {
 	}
 
 	expected := map[string]string{
-		"jubeInbound":       "jube.inbound",
-		"jubeOutbound":      "jube.outbound",
-		"jubeActivations":   "jube.activations",
-		"jubeNotifications": "jube.notifications",
+		"amlInbound":       "aml.inbound",
+		"amlOutbound":      "aml.outbound",
+		"amlActivations":   "aml.activations",
+		"amlNotifications": "aml.notifications",
 	}
 
 	for _, m := range mappings {
@@ -35,10 +35,10 @@ func TestMappingByAMQP(t *testing.T) {
 		name     string
 		expected string
 	}{
-		{"jubeInbound", "jube.inbound"},
-		{"jubeOutbound", "jube.outbound"},
-		{"jubeActivations", "jube.activations"},
-		{"jubeNotifications", "jube.notifications"},
+		{"amlInbound", "aml.inbound"},
+		{"amlOutbound", "aml.outbound"},
+		{"amlActivations", "aml.activations"},
+		{"amlNotifications", "aml.notifications"},
 		{"unknown", ""},
 	}
 
@@ -61,12 +61,12 @@ func TestMappingByAMQP(t *testing.T) {
 }
 
 func TestMappingByNATS(t *testing.T) {
-	m := MappingByNATS("jube.outbound")
+	m := MappingByNATS("aml.outbound")
 	if m == nil {
-		t.Fatal("expected mapping for jube.outbound")
+		t.Fatal("expected mapping for aml.outbound")
 	}
-	if m.AMQPName != "jubeOutbound" {
-		t.Errorf("expected AMQPName jubeOutbound, got %q", m.AMQPName)
+	if m.AMQPName != "amlOutbound" {
+		t.Errorf("expected AMQPName amlOutbound, got %q", m.AMQPName)
 	}
 
 	if MappingByNATS("nonexistent") != nil {
@@ -77,11 +77,11 @@ func TestMappingByNATS(t *testing.T) {
 func TestMappingTypes(t *testing.T) {
 	for _, m := range DefaultMappings() {
 		switch m.AMQPName {
-		case "jubeInbound", "jubeNotifications":
+		case "amlInbound", "amlNotifications":
 			if m.AMQPType != "queue" {
 				t.Errorf("%s: expected type queue, got %q", m.AMQPName, m.AMQPType)
 			}
-		case "jubeOutbound", "jubeActivations":
+		case "amlOutbound", "amlActivations":
 			if m.AMQPType != "fanout" {
 				t.Errorf("%s: expected type fanout, got %q", m.AMQPName, m.AMQPType)
 			}

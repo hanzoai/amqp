@@ -27,7 +27,7 @@ func NewPubSub(url string, opts ...nats.Option) (*PubSub, error) {
 	return &PubSub{NC: nc, JS: js}, nil
 }
 
-// EnsureStreams creates JetStream streams for all Jube channel mappings.
+// EnsureStreams creates JetStream streams for all AML channel mappings.
 func (p *PubSub) EnsureStreams(mappings []ChannelMapping) error {
 	for _, m := range mappings {
 		_, err := p.JS.AddStream(&nats.StreamConfig{

@@ -26,7 +26,7 @@ type Proxy struct {
 }
 
 // New creates a new Proxy. It connects to NATS and ensures JetStream
-// streams exist for all Jube channel mappings.
+// streams exist for all AML channel mappings.
 func New(cfg Config) (*Proxy, error) {
 	var opts []nats.Option
 	if cfg.PubSubCreds != "" {
