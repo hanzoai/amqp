@@ -16,7 +16,6 @@ package amqp
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -192,14 +191,7 @@ var osGetenv = func(key string) string {
 	return osGetenvImpl(key)
 }
 
-// init registers AMQP with the cloud subsystem registry. Order 30 —
-// after kms (10) + vfs (20) and ahead of mq (40).
-func init() {
-	cloud.Register("amqp", 30, func(app any, deps cloud.Deps) error {
-		a, ok := app.(*zip.App)
-		if !ok {
-			return fmt.Errorf("amqp.Mount: app is %T, want *zip.App", app)
-		}
-		return Mount(a, deps)
-	})
-}
+// Mount and Shutdown are the whole contract. cloud/apps.Wire lists this adaptor
+// as a MountSpec in mount order, the same as the Kafka adaptor beside it — one
+// way to attach a subsystem, no self-registering init and no separate ordering
+// number to keep in sync with the list.
