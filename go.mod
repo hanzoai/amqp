@@ -7,6 +7,7 @@ require (
 	github.com/hanzoai/zip v0.5.0
 	github.com/luxfi/log v1.5.0
 	github.com/nats-io/nats.go v1.50.0
+	github.com/zap-proto/zip v1.8.3
 )
 
 // HIP-0106 cloud Mount() — point at sibling cloud + zip checkouts.
@@ -310,7 +311,6 @@ require (
 	github.com/zap-proto/go v1.3.0 // indirect
 	github.com/zap-proto/http v0.2.0 // indirect
 	github.com/zap-proto/md v0.1.0 // indirect
-	github.com/zap-proto/zip v1.8.3 // indirect
 	go.mongodb.org/mongo-driver v1.17.9 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0 // indirect

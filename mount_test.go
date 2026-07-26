@@ -10,7 +10,7 @@ import (
 
 	"github.com/hanzoai/amqp"
 	"github.com/hanzoai/cloud"
-	"github.com/hanzoai/zip"
+	"github.com/zap-proto/zip"
 )
 
 func TestMount_HealthReadyz(t *testing.T) {

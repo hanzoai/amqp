@@ -18,8 +18,8 @@ import (
 
 	"github.com/hanzoai/amqp"
 	"github.com/hanzoai/cloud"
-	"github.com/hanzoai/zip"
-	"github.com/hanzoai/zip/middleware"
+	"github.com/zap-proto/zip"
+	"github.com/zap-proto/zip/middleware"
 )
 
 // version is overridden at build time via -ldflags "-X main.version=...".

@@ -23,7 +23,7 @@ import (
 
 	"github.com/hanzoai/amqp/proxy"
 	"github.com/hanzoai/cloud"
-	"github.com/hanzoai/zip"
+	"github.com/zap-proto/zip"
 )
 
 // Version is overridden at build time via -ldflags
