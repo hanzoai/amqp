@@ -4,7 +4,6 @@ go 1.26.4
 
 require (
 	github.com/hanzoai/cloud v1.801.63
-	github.com/hanzoai/zip v0.5.0
 	github.com/luxfi/log v1.5.0
 	github.com/nats-io/nats.go v1.50.0
 	github.com/zap-proto/zip v1.8.3
