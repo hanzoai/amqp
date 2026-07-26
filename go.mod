@@ -4,17 +4,14 @@ go 1.26.4
 
 require (
 	github.com/hanzoai/cloud v1.801.63
-	github.com/hanzoai/zip v0.2.0
+	github.com/hanzoai/zip v0.5.0
 	github.com/luxfi/log v1.5.0
 	github.com/nats-io/nats.go v1.50.0
 )
 
 // HIP-0106 cloud Mount() — point at sibling cloud + zip checkouts.
 // CI overrides via GOPROXY once cloud is published.
-replace (
-	github.com/hanzoai/cloud => ../cloud
-	github.com/hanzoai/zip => ../zip
-)
+replace github.com/hanzoai/cloud => ../cloud
 
 require (
 	cloud.google.com/go v0.123.0 // indirect
