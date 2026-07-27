@@ -160,12 +160,13 @@ require (
 	github.com/hanzo-ds/go v1.0.1 // indirect
 	github.com/hanzo-ds/native v0.72.0 // indirect
 	github.com/hanzoai/account v0.2.0 // indirect
-	github.com/hanzoai/ai v1.831.5-0.20260726065328-5420f6ba9987 // indirect
+	github.com/hanzoai/ai v1.831.6 // indirect
 	github.com/hanzoai/beego/v2 v2.4.2 // indirect
 	github.com/hanzoai/builder v0.3.13 // indirect
+	github.com/hanzoai/csqlite v0.1.0 // indirect
 	github.com/hanzoai/dashscope-go-sdk v0.0.2 // indirect
 	github.com/hanzoai/dashscopego v0.6.0 // indirect
-	github.com/hanzoai/dbx v1.17.1 // indirect
+	github.com/hanzoai/dbx v1.17.2 // indirect
 	github.com/hanzoai/decimal v0.1.1 // indirect
 	github.com/hanzoai/go-cosyvoice v1.0.0 // indirect
 	github.com/hanzoai/go-openai v1.41.0 // indirect
@@ -173,9 +174,9 @@ require (
 	github.com/hanzoai/go-openai-realtime/contrib/ws-gorilla v1.0.0 // indirect
 	github.com/hanzoai/go-openrouter v1.0.0 // indirect
 	github.com/hanzoai/ha v0.1.1 // indirect
-	github.com/hanzoai/iam v1.33.8 // indirect
+	github.com/hanzoai/iam v1.33.15 // indirect
 	github.com/hanzoai/money v0.2.1 // indirect
-	github.com/hanzoai/orm v0.6.8-0.20260726065619-7b3c62da906d // indirect
+	github.com/hanzoai/orm v0.6.14 // indirect
 	github.com/hanzoai/pdf v1.2.0 // indirect
 	github.com/hanzoai/s3-go v1.0.0 // indirect
 	github.com/hanzoai/search-go v0.36.0 // indirect
@@ -283,6 +284,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/supranational/blst v0.3.16 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tealeg/xlsx v1.0.5 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.77 // indirect
