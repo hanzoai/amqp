@@ -6,7 +6,7 @@ require (
 	github.com/hanzoai/cloud v1.801.218
 	github.com/luxfi/log v1.6.0
 	github.com/nats-io/nats.go v1.50.0
-	github.com/zap-proto/zip v1.17.2
+	github.com/zap-proto/zip v1.17.6
 )
 
 // HIP-0106 cloud Mount() — point at sibling cloud + zip checkouts.
@@ -49,12 +49,13 @@ require (
 	github.com/hanzoai/go-openai v1.41.0 // indirect
 	github.com/hanzoai/ha v0.1.1 // indirect
 	github.com/hanzoai/iam v1.33.26 // indirect
+	github.com/hanzoai/metrics v1.110.2 // indirect
 	github.com/hanzoai/money v0.2.1 // indirect
 	github.com/hanzoai/orm v0.6.18 // indirect
 	github.com/hanzoai/s3-go v1.0.0 // indirect
 	github.com/hanzoai/sqlcipher v0.1.1 // indirect
 	github.com/hanzoai/sqlite v0.4.0 // indirect
-	github.com/hanzoai/tasks v1.51.4 // indirect
+	github.com/hanzoai/tasks v1.52.1 // indirect
 	github.com/hanzoai/vfs v0.6.6 // indirect
 	github.com/hanzokv/go/v9 v9.22.0 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
@@ -81,6 +82,7 @@ require (
 	github.com/luxfi/p2p v1.22.1 // indirect
 	github.com/luxfi/pq v1.1.0 // indirect
 	github.com/luxfi/sampler v1.1.0 // indirect
+	github.com/luxfi/trace v1.4.0 // indirect
 	github.com/luxfi/validators v1.3.1 // indirect
 	github.com/luxfi/version v1.0.1 // indirect
 	github.com/luxfi/warp v1.24.1 // indirect
