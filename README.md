@@ -57,4 +57,4 @@ Similar pattern to [Hanzo Stream](https://github.com/hanzoai/stream) (Kafka wire
 
 ## License
 
-MIT
+MIT OR Apache-2.0, at your option — per [HIP-0137](https://github.com/hanzoai/hips/blob/main/HIPs/hip-0137-one-license.md).
