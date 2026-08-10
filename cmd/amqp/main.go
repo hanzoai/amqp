@@ -1,65 +1,62 @@
-// hanzo-amqp — HIP-0106 thin shim.
+// hanzo-amqp runs the AMQP 0-9-1 gateway as its own process.
 //
-// Mounts pkg/amqp into a zip.App via the same Mount() the unified
-// cloud binary calls. The AMQP 0-9-1 listener and NATS JetStream
-// bridge are wired by pkg/amqp.Mount — this binary only handles
-// process lifecycle.
+// It owns process lifecycle and nothing else: amqp.App builds the gateway
+// and its probes, this binary listens and drains. The same app composes into
+// a host binary unchanged.
 package main
 
 import (
+	"cmp"
 	"context"
-	"fmt"
+	"flag"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/luxfi/log"
 
 	"github.com/hanzoai/amqp"
-	"github.com/hanzoai/cloud"
-	"github.com/zap-proto/zip"
-	"github.com/zap-proto/zip/middleware"
 )
 
 // version is overridden at build time via -ldflags "-X main.version=...".
 var version = "dev"
 
 func main() {
+	var cfg amqp.Config
+	flag.StringVar(&cfg.AMQPAddr, "amqp-addr", "", "AMQP 0-9-1 listen address ($AMQP_BIND, else 0.0.0.0:5672)")
+	flag.StringVar(&cfg.PubSubURL, "pubsub-url", "", "NATS server URL ($NATS_URL, else nats://localhost:4222)")
+	flag.StringVar(&cfg.PubSubCreds, "pubsub-creds", "", "NATS credentials file ($NATS_CREDS)")
+	httpAddr := flag.String("http-addr", cmp.Or(os.Getenv("HTTP_BIND"), ":8080"), "health/readyz listen address")
+	flag.Parse()
+
 	amqp.Version = version
-
-	cfg := cloud.LoadConfig()
-	if err := cfg.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "config: %v\n", err)
-		os.Exit(1)
+	app, err := amqp.App(cfg)
+	if err != nil {
+		log.Crit("amqp: build", "err", err)
 	}
-	deps := cloud.BuildDeps(cfg)
 
-	app := zip.New(zip.Config{
-		Logger:  deps.Logger,
-		AppName: "amqp",
-	})
-	app.Use(middleware.Recover())
-	app.Use(middleware.RequestID())
-	app.Use(middleware.Logger(deps.Logger))
-
-	if err := amqp.Mount(app, deps); err != nil {
-		log.Crit("amqp: mount", "err", err)
+	// zip reads the transport off the address scheme and a bare one means ZAP.
+	// These are kubelet probes, so say HTTP.
+	addr := *httpAddr
+	if !strings.Contains(addr, "://") {
+		addr = "http://" + addr
 	}
 
 	listenErr := make(chan error, 1)
 	go func() {
-		log.Info("amqp shim: HTTP listening", "addr", cfg.ListenAddr)
-		listenErr <- app.Listen(cfg.ListenAddr)
+		log.Info("amqp: HTTP listening", "addr", addr)
+		listenErr <- app.Listen(addr)
 	}()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case s := <-sig:
-		log.Info("amqp shim: shutting down", "signal", s)
+		log.Info("amqp: shutting down", "signal", s)
 	case err := <-listenErr:
-		log.Crit("amqp shim: HTTP listen failed", "err", err)
+		log.Crit("amqp: HTTP listen failed", "err", err)
 	}
 
 	stopCtx, stopCancel := context.WithTimeout(context.Background(), 10*time.Second)

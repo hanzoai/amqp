@@ -24,7 +24,7 @@ AML connects to this proxy on port 5672 thinking it is RabbitMQ. The proxy trans
 ## Quick Start
 
 ```bash
-go run . --pubsub-url nats://localhost:4222 --amqp-addr 0.0.0.0:5672
+go run ./cmd/amqp --pubsub-url nats://localhost:4222 --amqp-addr 0.0.0.0:5672
 ```
 
 ## Kubernetes
