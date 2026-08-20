@@ -6,23 +6,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	luxlog "github.com/luxfi/log"
-
 	"github.com/hanzoai/amqp"
-	"github.com/hanzoai/cloud"
-	"github.com/zap-proto/zip"
 )
 
-func TestMount_HealthReadyz(t *testing.T) {
-	app := zip.New(zip.Config{Logger: luxlog.New("test")})
-	deps := cloud.Deps{Logger: luxlog.New("test")}
-
-	// DisableListener=true keeps the test from trying to bind 5672 or
-	// reach a NATS server. Health stays 200, readyz stays 503.
-	if err := amqp.MountWithConfig(app, deps, amqp.MountConfig{
-		DisableListener: true,
-	}); err != nil {
-		t.Fatalf("Mount: %v", err)
+func TestApp_HealthReadyz(t *testing.T) {
+	// DisableListener keeps the test off port 5672 and off any NATS server.
+	// Health stays 200, readyz stays 503.
+	app, err := amqp.App(amqp.Config{DisableListener: true})
+	if err != nil {
+		t.Fatalf("App: %v", err)
 	}
 
 	req := httptest.NewRequest("GET", "/v1/amqp/health", nil)
