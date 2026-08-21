@@ -109,10 +109,25 @@ func (c *channel) shutdown() {
 			v.pull.Stop()
 		}
 		c.s.b.detach(v.queue)
+		c.reap(v.queue)
 	}
 	for _, d := range held {
 		_ = d.msg.Nak()
 	}
+}
+
+// reap deletes an auto-delete queue once its last consumer is gone (§1.7.2.4).
+// That is the event auto-delete names — not the connection closing, which is
+// what exclusive names.
+func (c *channel) reap(queue string) {
+	q, ok := c.s.b.top.Queue(queue)
+	if !ok || !q.AutoDelete || c.s.b.consumers(queue) > 0 {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), work)
+	defer cancel()
+	_ = c.s.b.dropConsumer(ctx, queue)
+	_ = c.s.b.top.DropQueue(ctx, queue)
 }
 
 func (c *channel) frame(f wire.Frame, class, method uint16) error {
@@ -303,8 +318,24 @@ func (c *channel) queue(method uint16, a *wire.Args) error {
 		if passive && !ok {
 			return chanFault(notFound, classQueue, method, "NOT_FOUND - no queue %q", name)
 		}
+		if ok && have.Exclusive && !c.s.b.claim(name, c.s) {
+			return chanFault(resourceLocked, classQueue, method,
+				"RESOURCE_LOCKED - queue %q is exclusive to another connection", name)
+		}
+		// A redeclare that disagrees about what the queue IS is refused, not
+		// quietly accepted: a client that asked for durable and was told ok
+		// would believe its messages survive a restart.
+		if ok && !passive && (have.Durable != durable || have.Exclusive != exclusive || have.AutoDelete != autoDelete) {
+			return chanFault(preconditionFailed, classQueue, method,
+				"PRECONDITION_FAILED - queue %q exists as durable=%v exclusive=%v auto-delete=%v",
+				name, have.Durable, have.Exclusive, have.AutoDelete)
+		}
 		if !passive && !ok {
 			have = Queue{Durable: durable, Exclusive: exclusive, AutoDelete: autoDelete}
+			if exclusive && !c.s.b.claim(name, c.s) {
+				return chanFault(resourceLocked, classQueue, method,
+					"RESOURCE_LOCKED - queue %q is exclusive to another connection", name)
+			}
 			if err := top.PutQueue(ctx, name, have); err != nil {
 				return err
 			}
@@ -316,7 +347,11 @@ func (c *channel) queue(method uint16, a *wire.Args) error {
 		if err != nil {
 			return chanFault(internalError, classQueue, method, "INTERNAL_ERROR - queue %q: %v", name, err)
 		}
-		if have.Exclusive || have.AutoDelete {
+		// Only an exclusive queue dies with the connection. An auto-delete
+		// queue dies when its LAST CONSUMER goes, which is a different event
+		// and is handled where consumers are counted — deleting it here would
+		// take a queue another connection is still consuming.
+		if have.Exclusive {
 			c.s.own(name)
 		}
 		if noWait {
@@ -483,6 +518,7 @@ func (c *channel) basic(method uint16, a *wire.Args) error {
 				cons.pull.Stop()
 			}
 			c.s.b.detach(cons.queue)
+			c.reap(cons.queue)
 		}
 		if noWait {
 			return nil
@@ -600,8 +636,13 @@ func (c *channel) consume(a *wire.Args) error {
 	if err := a.Err(); err != nil {
 		return connFault(syntaxError, classBasic, basicConsume, "basic.consume: %v", err)
 	}
-	if _, ok := c.s.b.top.Queue(queue); !ok {
+	q, ok := c.s.b.top.Queue(queue)
+	if !ok {
 		return chanFault(notFound, classBasic, basicConsume, "NOT_FOUND - no queue %q", queue)
+	}
+	if q.Exclusive && !c.s.b.claim(queue, c.s) {
+		return chanFault(resourceLocked, classBasic, basicConsume,
+			"RESOURCE_LOCKED - queue %q is exclusive to another connection", queue)
 	}
 	if tag == "" {
 		tag = "ctag-" + nuid.Next()
@@ -715,8 +756,13 @@ func (c *channel) get(a *wire.Args) error {
 	if err := a.Err(); err != nil {
 		return connFault(syntaxError, classBasic, basicGet, "basic.get: %v", err)
 	}
-	if _, ok := c.s.b.top.Queue(queue); !ok {
+	q, ok := c.s.b.top.Queue(queue)
+	if !ok {
 		return chanFault(notFound, classBasic, basicGet, "NOT_FOUND - no queue %q", queue)
+	}
+	if q.Exclusive && !c.s.b.claim(queue, c.s) {
+		return chanFault(resourceLocked, classBasic, basicGet,
+			"RESOURCE_LOCKED - queue %q is exclusive to another connection", queue)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), work)
@@ -805,8 +851,12 @@ func (c *channel) head(payload []byte) error {
 	if class != classBasic {
 		return connFault(frameError, class, 0, "content header names class %d, not basic", class)
 	}
-	if size > uint64(c.s.b.cfg.FrameMax)*4096 {
-		return chanFault(311, classBasic, basicPublish, "CONTENT_TOO_LARGE - body of %d octets", size)
+	if max := c.s.b.body; max > 0 && size > uint64(max) {
+		// Refused on the HEADER: a body size is a claim, and believing one is
+		// how seven octets become an allocation. The bus would refuse the
+		// publish anyway, so accepting the bytes first only buys the memory.
+		return chanFault(contentTooLarge, classBasic, basicPublish,
+			"CONTENT_TOO_LARGE - body of %d octets, over the bus maximum of %d", size, max)
 	}
 
 	c.mu.Lock()

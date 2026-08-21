@@ -87,9 +87,11 @@ const (
 // Reply codes (§4.3). Only the ones this gateway actually returns.
 const (
 	replySuccess       = 200
+	contentTooLarge    = 311
 	noRoute            = 312
 	accessRefused      = 403
 	notFound           = 404
+	resourceLocked     = 405
 	preconditionFailed = 406
 	frameError         = 501
 	syntaxError        = 502
@@ -201,6 +203,7 @@ func (s *session) close() {
 			_ = s.b.dropConsumer(ctx, q)
 			_ = s.b.top.DropQueue(ctx, q)
 		}
+		s.b.release(s)
 	})
 }
 

@@ -69,6 +69,8 @@ type Broker struct {
 	ln   net.Listener
 	live map[*session]struct{}
 	cons map[string]int
+	excl map[string]*session
+	body int // the bus's own max payload; the ceiling on a content body
 }
 
 // Defaults for what Config leaves empty.
@@ -102,6 +104,7 @@ func NewBroker(cfg Config) *Broker {
 		quit:  make(chan struct{}),
 		live:  map[*session]struct{}{},
 		cons:  map[string]int{},
+		excl:  map[string]*session{},
 	}
 }
 
@@ -124,6 +127,11 @@ func (b *Broker) Serve() error {
 		return fmt.Errorf("connect %s: %w", b.cfg.PubSubURL, err)
 	}
 	b.nc = nc
+	// The bus decides how large a message may be, so the gateway does not name
+	// a second number. A content header claiming more than this is refused on
+	// the header — before a byte of it is read — which is what keeps a lying
+	// body size from being an allocation.
+	b.body = int(nc.MaxPayload())
 
 	js, err := jetstream.New(nc)
 	if err != nil {
@@ -327,6 +335,38 @@ func (b *Broker) detach(queue string) {
 		return
 	}
 	b.cons[queue]--
+}
+
+// claim records that a session holds an exclusive queue, and reports whether
+// it may. An exclusive queue belongs to the connection that declared it
+// (§1.7.2.1), so a second connection asking for it is refused rather than made
+// a co-owner — co-ownership meant either connection's close deleted the other's
+// queue.
+//
+// It is enforced within this gateway and cannot be enforced across a fleet of
+// them: a replica cannot see another replica's sockets, so two gateways can
+// each hold what the other thinks is exclusive. Say so rather than implying a
+// guarantee the shape cannot make.
+func (b *Broker) claim(queue string, s *session) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	held, ok := b.excl[queue]
+	if ok && held != s {
+		return false
+	}
+	b.excl[queue] = s
+	return true
+}
+
+// release drops every exclusive queue a session held.
+func (b *Broker) release(s *session) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for q, held := range b.excl {
+		if held == s {
+			delete(b.excl, q)
+		}
+	}
 }
 
 func (b *Broker) consumers(queue string) int {

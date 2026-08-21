@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/amqp/protocol"
+	"github.com/hanzoai/amqp/wire"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -799,4 +800,163 @@ func readFull(c net.Conn, b []byte) (int, error) {
 		}
 	}
 	return n, nil
+}
+
+// TestExclusiveQueueBelongsToOneConnection: a second connection may not take,
+// consume or get an exclusive queue. Before this held, both connections were
+// made owners and EITHER one's close deleted the other's queue.
+func TestExclusiveQueueBelongsToOneConnection(t *testing.T) {
+	url := gateway(t)
+	_, first := dial(t, url)
+	if _, err := first.QueueDeclare("mine", false, false, true, false, nil); err != nil {
+		t.Fatalf("queue.declare: %v", err)
+	}
+
+	for _, c := range []struct {
+		what string
+		try  func(*amqp.Channel) error
+	}{
+		{"declare", func(ch *amqp.Channel) error {
+			_, err := ch.QueueDeclare("mine", false, false, true, false, nil)
+			return err
+		}},
+		{"consume", func(ch *amqp.Channel) error {
+			_, err := ch.Consume("mine", "", true, false, false, false, nil)
+			return err
+		}},
+		{"get", func(ch *amqp.Channel) error {
+			_, _, err := ch.Get("mine", true)
+			return err
+		}},
+	} {
+		// A fresh connection each time: a channel exception closes the channel.
+		_, other := dial(t, url)
+		err := c.try(other)
+		var ae *amqp.Error
+		if !errors.As(err, &ae) {
+			t.Fatalf("%s from another connection: err = %v, want an *amqp.Error", c.what, err)
+		}
+		if ae.Code != 405 {
+			t.Fatalf("%s from another connection: code = %d, want 405 RESOURCE_LOCKED", c.what, ae.Code)
+		}
+	}
+
+	// The owner still holds it.
+	if _, err := first.QueueDeclare("mine", false, false, true, false, nil); err != nil {
+		t.Fatalf("the declaring connection lost its own exclusive queue: %v", err)
+	}
+}
+
+// TestRedeclareWithDifferentFlagsIsRefused: a client told "ok" for a durable
+// queue that is not durable believes its messages survive a restart.
+func TestRedeclareWithDifferentFlagsIsRefused(t *testing.T) {
+	_, ch := dial(t, gateway(t))
+	if _, err := ch.QueueDeclare("flags", false, false, false, false, nil); err != nil {
+		t.Fatalf("queue.declare: %v", err)
+	}
+	_, err := ch.QueueDeclare("flags", true, false, false, false, nil) // now durable
+	var ae *amqp.Error
+	if !errors.As(err, &ae) {
+		t.Fatalf("redeclare with different flags: err = %v, want an *amqp.Error", err)
+	}
+	if ae.Code != 406 {
+		t.Fatalf("code = %d, want 406 PRECONDITION_FAILED", ae.Code)
+	}
+}
+
+// TestAutoDeleteOutlivesItsDeclarerAndDiesWithItsLastConsumer: auto-delete
+// names the last consumer leaving, which is NOT the connection closing —
+// deleting on close took queues other connections were still consuming.
+func TestAutoDeleteOutlivesItsDeclarerAndDiesWithItsLastConsumer(t *testing.T) {
+	url := gateway(t)
+
+	declarer, err := amqp.Dial(url)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	dch, err := declarer.Channel()
+	if err != nil {
+		t.Fatalf("channel: %v", err)
+	}
+	if _, err := dch.QueueDeclare("transient", false, true, false, false, nil); err != nil {
+		t.Fatalf("queue.declare: %v", err)
+	}
+
+	_, consumer := dial(t, url)
+	if _, err := consumer.Consume("transient", "c", false, false, false, false, nil); err != nil {
+		t.Fatalf("consume: %v", err)
+	}
+	if err := declarer.Close(); err != nil {
+		t.Fatalf("close the declaring connection: %v", err)
+	}
+
+	// Still there, because a consumer is still on it.
+	if _, err := consumer.QueueDeclarePassive("transient", false, true, false, false, nil); err != nil {
+		t.Fatalf("the auto-delete queue died with the connection that declared it: %v", err)
+	}
+
+	if err := consumer.Cancel("c", false); err != nil {
+		t.Fatalf("basic.cancel: %v", err)
+	}
+	_, spare := dial(t, url)
+	if _, err := spare.QueueDeclarePassive("transient", false, true, false, false, nil); err == nil {
+		t.Fatal("the auto-delete queue outlived its last consumer")
+	}
+}
+
+// TestABodyLargerThanTheBusIsRefusedOnTheHeader: a body size is a claim, and a
+// broker that believes one before reading it has been handed an allocation.
+func TestABodyLargerThanTheBusIsRefusedOnTheHeader(t *testing.T) {
+	url := strings.TrimPrefix(gateway(t), "amqp://")
+	conn, err := net.Dial("tcp", url)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(20 * time.Second))
+
+	if _, err := conn.Write([]byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}); err != nil {
+		t.Fatalf("write protocol header: %v", err)
+	}
+	r := wire.NewReader(conn, protocol.DefaultFrameMax)
+	w := wire.NewWriter(conn, protocol.DefaultFrameMax)
+	read := func(what string) wire.Frame {
+		t.Helper()
+		f, err := r.Read()
+		if err != nil {
+			t.Fatalf("read %s: %v", what, err)
+		}
+		return f
+	}
+	send := func(what string, b *wire.Buf, ch uint16) {
+		t.Helper()
+		if err := w.Send(b.Frame(ch)); err != nil {
+			t.Fatalf("write %s: %v", what, err)
+		}
+	}
+
+	read("connection.start")
+	send("connection.start-ok", wire.NewMethod(10, 11).
+		Table(wire.Table{"product": "probe"}).ShortStr("PLAIN").LongStr("\x00g\x00g").ShortStr("en_US"), 0)
+	read("connection.tune")
+	send("connection.tune-ok", wire.NewMethod(10, 31).Short(64).Long(protocol.DefaultFrameMax).Short(0), 0)
+	send("connection.open", wire.NewMethod(10, 40).ShortStr("/").ShortStr("").Bit(false), 0)
+	read("connection.open-ok")
+	send("channel.open", wire.NewMethod(20, 10).ShortStr(""), 1)
+	read("channel.open-ok")
+
+	// basic.publish, then a content header claiming 4 GiB.
+	send("basic.publish", wire.NewMethod(60, 40).Short(0).ShortStr("").ShortStr("anywhere").Bit(false).Bit(false), 1)
+	if err := w.Send(wire.HeaderFrame(1, 60, 4<<30, wire.Props{})); err != nil {
+		t.Fatalf("write content header: %v", err)
+	}
+
+	f := read("the refusal")
+	class, method, err := wire.ClassMethod(f.Payload)
+	if err != nil || class != 20 || method != 40 {
+		t.Fatalf("answer was class %d method %d (%v), want channel.close", class, method, err)
+	}
+	if code := wire.NewArgs(f.Payload).Short(); code != 311 {
+		t.Fatalf("reply code = %d, want 311 CONTENT_TOO_LARGE", code)
+	}
 }

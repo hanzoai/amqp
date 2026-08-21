@@ -43,6 +43,10 @@ auto-delete · `basic.publish` with the full property set · `basic.consume` /
 `basic.qos` prefetch · publisher confirms · the `mandatory` return · heartbeats
 · bodies larger than frame-max.
 
+Exclusivity is enforced within one gateway: a replica cannot see another
+replica's connections, so a fleet of them can each hold what the other thinks
+is exclusive.
+
 ## What does not, and says so
 
 Headers exchanges, transactions (`tx.*`), byte-counted qos, `immediate`,

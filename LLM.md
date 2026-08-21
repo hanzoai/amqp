@@ -36,7 +36,19 @@ mapping table there IS the design.
   `channel.close` the session ignores that channel until `close-ok`
   (`session.closing`); the peer had frames in flight.
 - **`wire.Reader` enforces frame-max.** The size field is 32 bits: without it,
-  seven octets from a stranger ask for a 4 GiB allocation.
+  seven octets from a stranger ask for a 4 GiB allocation. A content HEADER is
+  the same shape of claim one level up, so a declared body size is refused
+  against the bus's own `MaxPayload` before a byte of it is read — the gateway
+  names no second number.
+- **Exclusive and auto-delete name DIFFERENT events, and conflating them deletes
+  other people's queues.** Exclusive belongs to the connection that declared it
+  (`Broker.claim`, refused elsewhere with 405); auto-delete dies when its LAST
+  CONSUMER goes (`channel.reap`, off the consumer count). Making both die with
+  the connection made two connections co-owners of one exclusive queue, so
+  either one's close took the other's.
+- **Exclusivity is enforced within ONE gateway.** A replica cannot see another
+  replica's sockets, so two of them can each hold what the other thinks is
+  exclusive. Say so; do not imply a guarantee the shape cannot make.
 
 ## Tests
 
