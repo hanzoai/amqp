@@ -1,0 +1,12 @@
+# hanzoai/amqp — the AMQP 0-9-1 gateway that speaks to NATS.
+#
+# No images:, though the Dockerfile is real. Nothing in the fleet pins an image
+# from this repo, and imgver reads the version from a manifest a Go repo does
+# not carry — so declaring one would open a release series rather than gate a
+# build. The build below is what the image compiles; publishing is its own
+# decision, taken when something needs to pull it.
+test:
+  - name: build
+    run: go build ./...
+  - name: unit
+    run: go test ./... -count=1
