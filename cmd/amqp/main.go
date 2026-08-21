@@ -1,66 +1,57 @@
-// hanzo-amqp runs the AMQP 0-9-1 gateway as its own process.
+// Command amqp runs the AMQP 0-9-1 gateway as its own process.
 //
-// It owns process lifecycle and nothing else: amqp.App builds the gateway
-// and its probes, this binary listens and drains. The same app composes into
-// a host binary unchanged.
+// It owns process lifecycle and nothing else: protocol.Broker is the gateway,
+// this binary starts it and drains it. There is no HTTP surface, because a
+// broker's readiness is whether its port accepts — which is what a TCP probe
+// asks and what every client asks.
 package main
 
 import (
 	"cmp"
-	"context"
 	"flag"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/luxfi/log"
 
-	"github.com/hanzoai/amqp"
+	"github.com/hanzoai/amqp/protocol"
 )
 
 // version is overridden at build time via -ldflags "-X main.version=...".
 var version = "dev"
 
 func main() {
-	var cfg amqp.Config
-	flag.StringVar(&cfg.AMQPAddr, "amqp-addr", "", "AMQP 0-9-1 listen address ($AMQP_BIND, else 0.0.0.0:5672)")
-	flag.StringVar(&cfg.PubSubURL, "pubsub-url", "", "NATS server URL ($NATS_URL, else nats://localhost:4222)")
-	flag.StringVar(&cfg.PubSubCreds, "pubsub-creds", "", "NATS credentials file ($NATS_CREDS)")
-	httpAddr := flag.String("http-addr", cmp.Or(os.Getenv("HTTP_BIND"), ":8080"), "health/readyz listen address")
+	var cfg protocol.Config
+	flag.StringVar(&cfg.Addr, "addr", env("AMQP_BIND", protocol.DefaultAddr), "AMQP 0-9-1 listen address")
+	flag.StringVar(&cfg.PubSubURL, "pubsub-url", env("PUBSUB_URL", "nats://127.0.0.1:4222"), "the bus to translate to and from")
+	flag.StringVar(&cfg.PubSubCreds, "pubsub-creds", env("PUBSUB_CREDS", ""), "NATS credentials file")
 	flag.Parse()
+	cfg.Version = version
 
-	amqp.Version = version
-	app, err := amqp.App(cfg)
-	if err != nil {
-		log.Crit("amqp: build", "err", err)
+	b := protocol.NewBroker(cfg)
+	done := make(chan error, 1)
+	go func() { done <- b.Serve() }()
+
+	select {
+	case err := <-done:
+		log.Crit("amqp: serve", "err", err)
+	case <-b.Ready():
+		log.Info("amqp: serving", "addr", b.Addr(), "pubsub", cfg.PubSubURL, "version", version)
+	case <-time.After(30 * time.Second):
+		log.Crit("amqp: the bus did not answer within 30s", "pubsub", cfg.PubSubURL)
 	}
-
-	// zip reads the transport off the address scheme and a bare one means ZAP.
-	// These are kubelet probes, so say HTTP.
-	addr := *httpAddr
-	if !strings.Contains(addr, "://") {
-		addr = "http://" + addr
-	}
-
-	listenErr := make(chan error, 1)
-	go func() {
-		log.Info("amqp: HTTP listening", "addr", addr)
-		listenErr <- app.Listen(addr)
-	}()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case s := <-sig:
 		log.Info("amqp: shutting down", "signal", s)
-	case err := <-listenErr:
-		log.Crit("amqp: HTTP listen failed", "err", err)
+	case err := <-done:
+		log.Crit("amqp: serve exited", "err", err)
 	}
-
-	stopCtx, stopCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer stopCancel()
-	_ = amqp.Shutdown(stopCtx)
-	_ = app.ShutdownWithContext(stopCtx)
+	b.Shutdown()
 }
+
+func env(key, dflt string) string { return cmp.Or(os.Getenv(key), dflt) }

@@ -32,4 +32,4 @@ COPY --from=builder /hanzo-amqp /usr/local/bin/hanzo-amqp
 EXPOSE 5672
 
 ENTRYPOINT ["hanzo-amqp"]
-CMD ["--pubsub-url", "nats://pubsub:4222", "--amqp-addr", "0.0.0.0:5672"]
+CMD ["--pubsub-url", "nats://pubsub:4222", "--addr", "0.0.0.0:5672"]
