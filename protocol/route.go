@@ -89,8 +89,8 @@ func Subject(exchange, key string) (string, error) {
 	if key == "" {
 		return Root + "." + ex, nil
 	}
-	words := strings.Split(key, ".")
-	for _, w := range words {
+	words := strings.SplitSeq(key, ".")
+	for w := range words {
 		if w == "" {
 			return "", fmt.Errorf("routing key %q has an empty word", key)
 		}

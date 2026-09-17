@@ -184,11 +184,9 @@ func (b *Broker) Serve() error {
 			b.wg.Wait()
 			return fmt.Errorf("accept: %w", err)
 		}
-		b.wg.Add(1)
-		go func() {
-			defer b.wg.Done()
+		b.wg.Go(func() {
 			b.serve(conn)
-		}()
+		})
 	}
 }
 

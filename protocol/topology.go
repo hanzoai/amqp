@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sort"
 	"sync"
 
@@ -255,12 +256,8 @@ func (t *Topology) Snapshot() (map[string]Exchange, map[string]Queue) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	ex := make(map[string]Exchange, len(t.ex))
-	for k, v := range t.ex {
-		ex[k] = v
-	}
+	maps.Copy(ex, t.ex)
 	q := make(map[string]Queue, len(t.q))
-	for k, v := range t.q {
-		q[k] = v
-	}
+	maps.Copy(q, t.q)
 	return ex, q
 }
