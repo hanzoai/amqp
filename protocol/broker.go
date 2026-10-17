@@ -81,7 +81,7 @@ const (
 	DefaultProduct   = "hanzo-amqp"
 )
 
-// NewBroker builds a Broker. It opens nothing; Serve does that.
+// NewBroker builds a Broker. It opens nothing; Connect and Accept, or Serve, do that.
 func NewBroker(cfg Config) *Broker {
 	if cfg.Addr == "" {
 		cfg.Addr = DefaultAddr
@@ -108,13 +108,29 @@ func NewBroker(cfg Config) *Broker {
 	}
 }
 
-// Serve connects to the bus, declares the stream and the topology bucket,
-// binds the listener, and then accepts until Shutdown. It blocks.
+// Serve is Connect, a TCP listener on Config.Addr, and Accept on it. It blocks.
 //
 // Everything that can fail has failed by the time Ready closes, so a caller
 // that must fail closed waits on Ready against a deadline rather than guessing
 // with a sleep.
 func (b *Broker) Serve() error {
+	if err := b.Connect(); err != nil {
+		return err
+	}
+	ln, err := net.Listen("tcp", b.cfg.Addr)
+	if err != nil {
+		b.top.Close()
+		b.nc.Close()
+		return fmt.Errorf("listen %s: %w", b.cfg.Addr, err)
+	}
+	return b.Accept(ln)
+}
+
+// Connect dials the bus and declares the stream and the topology bucket. It
+// binds nothing, so a caller that holds the listener itself (a host that owns
+// the port and hands over each connection) fails closed on the bus before any
+// client can reach the gateway. Call it once, before Accept.
+func (b *Broker) Connect() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -157,13 +173,12 @@ func (b *Broker) Serve() error {
 		return err
 	}
 	b.top = top
+	return nil
+}
 
-	ln, err := net.Listen("tcp", b.cfg.Addr)
-	if err != nil {
-		top.Close()
-		nc.Close()
-		return fmt.Errorf("listen %s: %w", b.cfg.Addr, err)
-	}
+// Accept serves AMQP on ln until Shutdown, which closes ln. It blocks. Ready
+// closes as it begins. Call it once, after Connect succeeded.
+func (b *Broker) Accept(ln net.Listener) error {
 	b.mu.Lock()
 	b.ln = ln
 	b.mu.Unlock()
@@ -190,7 +205,7 @@ func (b *Broker) Serve() error {
 	}
 }
 
-// Ready closes once the listener is bound and the bus is answering.
+// Ready closes once the bus is answering and Accept has its listener.
 func (b *Broker) Ready() <-chan struct{} { return b.ready }
 
 // Addr is where the listener actually landed, which is the question worth

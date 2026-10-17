@@ -13,7 +13,7 @@ mapping table there IS the design.
   - `route.go` — the whole AMQP↔JetStream map. Start here.
   - `topology.go` — exchanges, queues, bindings in KV bucket `amqp`, mirrored
     per replica through a watch.
-  - `broker.go` — listener, stream, per-queue consumers, `Serve`/`Ready`/`Shutdown`.
+  - `broker.go` — listener, stream, per-queue consumers, `Connect`/`Accept`/`Serve`/`Ready`/`Shutdown`.
   - `session.go` — one connection: handshake, frame loop, faults.
   - `channel.go` — one channel: every method, publish assembly, delivery.
 - `cmd/amqp/` — process lifecycle and nothing else.
@@ -23,6 +23,10 @@ mapping table there IS the design.
 - **`Ready()`, not a sleep.** `Serve` blocks; everything that can fail has
   failed by the time `Ready` closes. A caller that must fail closed waits on it
   against a deadline.
+- **`Serve` is `Connect` + listen + `Accept`.** A host that owns the port (cloud
+  relays :5672 to a unix socket and starts the gateway on the first connection)
+  calls `Connect`, which fails closed on the bus and binds nothing, then hands
+  `Accept` its own listener.
 - **A queue IS its consumer.** `queue.declare` creates the JetStream consumer,
   with `DeliverNew`. That is what makes a new queue start empty instead of
   replaying the stream's history.
