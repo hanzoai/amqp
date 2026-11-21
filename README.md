@@ -2,6 +2,8 @@
 
 # Hanzo AMQP
 
+[![Open in Hanzo](https://hanzo.app/badges/open-in-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/amqp&ref=main&action=open) [![Edit with Hanzo](https://hanzo.app/badges/edit-with-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/amqp&ref=main&action=edit) [![Deploy with Hanzo](https://hanzo.app/badges/deploy-with-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/amqp&ref=main&action=deploy)
+
 AMQP 0-9-1 on the platform bus: point a standard RabbitMQ client at `:5672` and
 it works unchanged, sharing one bus with everything NATS-native beside it.
 
